@@ -71,6 +71,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   tesseract-ocr-fra \
   tesseract-ocr-por \
   tesseract-ocr-spa \
+  tesseract-ocr-rus \
+  tesseract-ocr-tur \
   unpaper \
   && rm -rf /var/lib/apt/lists/*
 
@@ -79,8 +81,15 @@ WORKDIR /app
 COPY --from=builder /usr/local/lib/ /usr/local/lib/
 COPY --from=builder /usr/local/bin/ /usr/local/bin/
 
-COPY --from=builder /app/misc/webservice.py /app/
 COPY --from=builder /app/misc/watcher.py /app/
+COPY --from=builder /app/misc/webservice.py /app/
+COPY --from=builder /app/misc/index.html /app/
+COPY --from=builder /app/misc/favicon.ico /app/
+COPY --from=builder /app/misc/misc/jquery-3.3.1.min.js /app/misc/jquery-3.3.1.min.js
+COPY --from=builder /app/misc/misc/script.js /app/misc/script.js
+COPY --from=builder /app/misc/misc/style.css /app/misc/style.css
+COPY --from=builder /app/misc/misc/loader.gif /app/misc/loader.gif
+COPY --from=builder /app/misc/misc/upload.svg /app/misc/upload.svg
 
 # Copy minimal project files to get the test suite.
 COPY --from=builder /app/pyproject.toml /app/README.md /app/

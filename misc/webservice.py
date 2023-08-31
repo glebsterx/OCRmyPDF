@@ -18,7 +18,7 @@ import shlex
 from subprocess import run
 from tempfile import TemporaryDirectory
 
-from flask import Flask, Response, request, send_from_directory
+from flask import Flask, Response, request, send_from_directory, send_file
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -56,6 +56,23 @@ def do_ocrmypdf(file):
     return send_from_directory(downloaddir.name, filename)
 
 
+def root_dir():  # pragma: no cover
+    return os.path.abspath(os.path.dirname(__file__))
+
+
+def get_file(filename):  # pragma: no cover
+    try:
+        src = os.path.join(root_dir(), filename)
+        # Figure out how flask returns static files
+        # Tried:
+        # - render_template
+        # - send_file
+        # This should not be so non-obvious
+        return open(src).read()
+    except IOError as exc:
+        return str(exc)
+
+
 @app.route("/", methods=["GET", "POST"])
 def upload_file():
     if request.method == "POST":
@@ -70,38 +87,29 @@ def upload_file():
             return do_ocrmypdf(file)
         return Response("Some other problem", 400, mimetype='text/plain')
 
-    return """
-    <!doctype html>
-    <title>OCRmyPDF webservice</title>
-    <h1>Upload a PDF (debug UI)</h1>
-    <form method=post enctype=multipart/form-data>
-      <label for="args">Command line parameters</label>
-      <input type=textbox name=params>
-      <label for="file">File to upload</label>
-      <input type=file name=file>
-      <input type=submit value=Upload>
-    </form>
-    <h4>Notice</h2>
-    <div style="font-size: 70%; max-width: 34em;">
-    <p>This is a webservice wrapper for OCRmyPDF.</p>
-    <p>Copyright 2019 James R. Barlow</p>
-    <p>This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Affero General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-    </p>
-    <p>This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-    </p>
-    <p>
-    You should have received a copy of the GNU Affero General Public License
-    along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.
-    </p>
-    </div>
-    """
+    complete_path = os.path.join(root_dir(), "index.html")
+    content = get_file(complete_path)
+    return Response(content, "text/html")
 
+
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def get_resource(path):  # pragma: no cover
+    mimetypes = {
+        ".css": "text/css",
+        ".html": "text/html",
+        ".js": "application/javascript",
+        ".svg": "image/svg+xml",
+        ".gif": "image/gif",
+        ".ico": "image/x-icon",
+    }
+    complete_path = os.path.join(root_dir(), path)
+    ext = os.path.splitext(path)[1]
+    mimetype = mimetypes.get(ext, "text/html")
+    if (ext == ".gif" or ext == ".ico"):
+        return send_file(complete_path, mimetype=mimetype)
+    else:
+        return Response(get_file(complete_path), mimetype=mimetype)
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000)
